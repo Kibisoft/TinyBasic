@@ -1,4 +1,4 @@
-// implementation of Tiny BASIC by Fred Morales
+ // implementation of Tiny BASIC by Fred Morales
 // https://github.com/Kibisoft/TinyBasic
 // https://en.wikipedia.org/wiki/Tiny_BASIC
 //
@@ -93,6 +93,13 @@ public:
     void operator-=(const variant& i) { number -= i.number; }
     void operator*=(const variant& i) { number *= i.number; }
     void operator/=(const variant& i) { number /= i.number; }
+
+    variant operator==(const variant& i) { return variant(number == i.number); }
+    variant operator!=(const variant& i) { return variant(number != i.number); }
+    variant operator>(const variant& i) { return variant(number > i.number); }
+    variant operator<(const variant& i) { return variant(number < i.number); }
+    variant operator>=(const variant& i) { return variant(number >= i.number); }
+    variant operator<=(const variant& i) { return variant(number <= i.number); }
 };
 
 class TinyBasic;
@@ -165,12 +172,12 @@ private:
                             { "(", token::lparen, &TinyBasic::nop},
                             { ")", token::rparen, &TinyBasic::nop},
 
-                            { "=", token::eq, &TinyBasic::nop},
-                            { "<>", token::ne, &TinyBasic::nop},
-                            { ">", token::gt, &TinyBasic::nop},
-                            { ">=", token::ge, &TinyBasic::nop},
-                            { "<", token::lt, &TinyBasic::nop},
-                            { "<=", token::le, &TinyBasic::nop},
+                            { "=", token::eq, &TinyBasic::eq},
+                            { "<>", token::ne, &TinyBasic::ne},
+                            { ">", token::gt, &TinyBasic::gt},
+                            { ">=", token::ge, &TinyBasic::ge},
+                            { "<", token::lt, &TinyBasic::lt},
+                            { "<=", token::le, &TinyBasic::le},
     };
     
     variant variables[26];
@@ -180,6 +187,12 @@ public:
     TinyBasic()
     {
         program[0] = empty;
+    }
+
+    void parseLine(const string& aline)
+    {
+        line = aline;
+        parse();
     }
 
     int loop()
@@ -466,6 +479,7 @@ private:
             seek = 0;
 
             line = current->second;
+
             if (!parseStatement())
                 return false;
 
@@ -556,6 +570,8 @@ private:
         {
             stack.push(variables[line[seek] - 'A']);
             seek++;
+
+            eatBlank();
 
             return true;
         }
@@ -662,6 +678,44 @@ private:
         return true;
     }
 
+
+    bool eq()
+    {
+        stack[1] = stack[1] == stack[0];
+        stack.pop();
+        return true;
+    }
+    bool ne()
+    {
+        stack[1] = stack[1] != stack[0];
+        stack.pop();
+        return true;
+    }
+    bool gt()
+    {
+        stack[1] = stack[1] > stack[0];
+        stack.pop();
+        return true;
+    }
+    bool lt()
+    {
+        stack[1] = stack[1] < stack[0];
+        stack.pop();
+        return true;
+    }
+    bool ge()
+    {
+        stack[1] = stack[1] >= stack[0];
+        stack.pop();
+        return true;
+    }
+    bool le()
+    {
+        stack[1] = stack[1] <= stack[0];
+        stack.pop();
+        return true;
+    }
+
     bool nop()
     {
         return true;
@@ -681,5 +735,12 @@ tokenizer::tokenizer(std::initializer_list<tuple<string, token, function<bool(Ti
 int main()
 {
     TinyBasic basic;
+
+    basic.parseLine("10 LET A=1");
+    basic.parseLine("20 LET A=A+1");
+    basic.parseLine("30 IF A>1000000 THEN GOTO 50");
+    basic.parseLine("40 GOTO 20");
+    basic.parseLine("50 PRINT 0");
+
     return basic.loop();
 }
