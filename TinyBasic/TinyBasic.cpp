@@ -24,13 +24,73 @@
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //SOFTWARE.
 
+// best is 3898762
+
+#include <Windows.h>
+
 #include <functional>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <vector>
+#include <stack>
 
 using namespace std;
+
+const size_t add_instruction = 0;
+const size_t sub_instruction = 1;
+const size_t mult_instruction = 2;
+const size_t div_instruction = 3;
+const size_t lparen_instruction = 4;
+const size_t rparen_instruction = 5;
+
+const size_t i_eq = 6;
+const size_t i_ne = 7;
+const size_t i_gt = 8;
+const size_t i_ge = 9;
+const size_t i_lt = 10;
+const size_t i_le = 11;
+const size_t i_move = 12;
+const size_t i_push = 13;
+
+class VirtualMachine
+{
+private:
+
+    map<size_t, int> program;
+
+    stack<int> stack;
+    map<size_t, int>::iterator current;
+
+    vector<function<void(VirtualMachine&)>> instructions = { &VirtualMachine::nop, &VirtualMachine::push, &VirtualMachine::pop };
+
+    void nop() {}
+    void push() {}
+    void pop() {}
+
+public:
+
+    void run()
+    {
+        current = program.begin();
+        current++;
+
+        LARGE_INTEGER s, e;
+        QueryPerformanceCounter(&s);
+
+        try
+        {
+            while (current != program.end())
+            {
+                current++;
+            }
+        }
+        catch (...) {}
+        QueryPerformanceCounter(&e);
+        cout << e.QuadPart - s.QuadPart << endl;
+    }
+};
+
 
 enum class token
 {
@@ -59,7 +119,9 @@ enum class token
     gt,
     lt,
     ge,
-    le
+    le,
+    var,
+    assign
 };
 
 
@@ -72,11 +134,12 @@ enum class type
 class variant
 {
 public:
-    union
-    {
-        int number;
-        token token;
-    };
+//    union
+    //{
+    int number;
+    token token;
+    vector<size_t> bytecode;
+    //};
 
     type type;
 
@@ -127,16 +190,18 @@ public:
     }
 };
 
-class stack : private vector<variant>
+class stack_item : public vector<size_t>
 {
 public:
-    void push(const variant& variant) { push_back(variant); }
-    void pop() { pop_back(); }
-    variant& top() { return back(); }
-    bool empty() const { return size() == 0; }
-    void clear() { vector<variant>::clear(); }
+    size_t number;
+};
 
-    variant& operator[](size_t i) { return vector<variant>::operator[](size() - (i + 1)); }
+
+class Line
+{
+public:
+    string source;
+    vector<size_t> bytecode;
 };
 
 class TinyBasic
@@ -144,11 +209,7 @@ class TinyBasic
     friend tokenizer;
 private:
 
-    map<size_t, string> program;
-
-    stack stack;
-
-    map<size_t, string>::iterator current;
+    map<size_t, Line>::iterator current;
     string empty;
     string& line = empty;
     size_t seek = 0;
@@ -163,30 +224,37 @@ private:
                             { "CLEAR", token::clear, &TinyBasic::parseClear},
                             { "LIST", token::list, &TinyBasic::parseList},
                             { "RUN", token::run, &TinyBasic::parseRun},
-                            { "END", token::end, &TinyBasic::parseEnd},
-
-                            { "+", token::plus, &TinyBasic::add},
-                            { "-", token::minus, &TinyBasic::sub},
-                            { "*", token::mult, &TinyBasic::mult},
-                            { "/", token::div, &TinyBasic::div},
-                            { "(", token::lparen, &TinyBasic::nop},
-                            { ")", token::rparen, &TinyBasic::nop},
-
-                            { "=", token::eq, &TinyBasic::eq},
-                            { "<>", token::ne, &TinyBasic::ne},
-                            { ">", token::gt, &TinyBasic::gt},
-                            { ">=", token::ge, &TinyBasic::ge},
-                            { "<", token::lt, &TinyBasic::lt},
-                            { "<=", token::le, &TinyBasic::le},
+                            { "END", token::end, &TinyBasic::parseEnd}
     };
     
-    variant variables[26];
+
+                 
+    vector<function<bool(TinyBasic&)>> instructions =
+    {
+        &TinyBasic::add,
+        &TinyBasic::sub,
+        &TinyBasic::mult,
+        &TinyBasic::div,
+        &TinyBasic::nop,
+        &TinyBasic::nop,
+
+        &TinyBasic::eq,
+        &TinyBasic::ne,
+        &TinyBasic::gt,
+        &TinyBasic::ge,
+        &TinyBasic::lt,
+        &TinyBasic::le,
+
+        &TinyBasic::move,
+        &TinyBasic::push
+    };
+
+    int variables[26];
 
 public:
 
     TinyBasic()
     {
-        program[0] = empty;
     }
 
     void parseLine(const string& aline)
@@ -226,11 +294,10 @@ private:
 
         if (parseNumber())
         {
-            if (stack.top().number != 0)
-                program[stack.top().number] = &line[seek];
-            stack.pop();
-
-            return stack.empty();
+            if (parseStatement())
+            {
+            }
+            return true;
         }
         else
         {
@@ -244,47 +311,23 @@ private:
     {
         if (line[seek] == c)
         {
-            switch (c)
-            {
-            case '+':
-                stack.push(token::plus);
-                break;
-            case '-':
-                stack.push(token::minus);
-                break;
-            case '*':
-                stack.push(token::mult);
-                break;
-            case '/':
-                stack.push(token::div);
-                break;
-            case '(':
-                stack.push(token::lparen);
-                break;
-            case ')':
-                stack.push(token::rparen);
-                break;
-            default:
-                return false;
-            }
-
             seek++;
             return true;
         }
 
         return false;
     }
+
     bool parseNumber()
     {
         if (!eol() && line[seek] >= '0' && line[seek] <= '9')
         {
-            stack.push(line[seek] - '0');
+            int number = line[seek] - '0';
 
             seek++;
             while (!eol() && line[seek] >= '0' && line[seek] <= '9')
             {
-                stack.top() *= 10;
-                stack.top() += line[seek] - '0';
+                number = number * 10 + (line[seek] - '0');
 
                 seek++;
             }
@@ -301,10 +344,7 @@ private:
     {
         if (parseToken())
         {
-            auto function = tokens[stack.top().token];
-            stack.pop();
-
-            return function(*this);
+            return true;
         }
 
         return false;
@@ -323,7 +363,6 @@ private:
             }
 
             token token = tokens[line.substr(i, seek - i)];
-            stack.push(token);
 
             eatBlank();
 
@@ -336,9 +375,8 @@ private:
 
     bool parseToken(token token)
     {
-        if (parseToken() && stack.top().token == token)
+        if (parseToken())
         {
-            stack.pop();
             return true;
         }
 
@@ -349,9 +387,6 @@ private:
     {
         if (parseExpression())
         {
-            cout << stack.top().number << endl;
-            stack.pop();
-
             return true;
         }
         return false;
@@ -361,17 +396,9 @@ private:
     {
         if (parseExpression() && parseRelop())
         {
-            auto function = tokens[stack.top().token];
-            stack.pop();
-
             if (parseExpression() && parseToken(token::then))
             {
-                function(*this);
-
-                if (stack.top().number)
-                    return parseStatement();
-
-                return true;
+                return parseStatement();
             }
         }
 
@@ -383,10 +410,6 @@ private:
     {
         if (parseExpression())
         {
-            current = program.find(stack.top().number);
-            current--;
-            stack.pop();
-
             return true;
         }
         return false;
@@ -396,14 +419,6 @@ private:
     {
         if (parseExpression())
         {
-            size_t ret = current->first;
-
-            current = program.find(stack.top().number);
-            current--;
-
-            stack.pop();
-            stack.push(ret);
-
             return true;
         }
         return false;
@@ -411,9 +426,6 @@ private:
 
     bool parseReturn()
     {
-        current = program.find(stack.top().number);
-        stack.pop();
-
         return true;
     }
 
@@ -421,7 +433,6 @@ private:
     {
         if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
         {
-            size_t i = line[seek] - 'A';
             seek++;
 
             eatBlank();
@@ -432,9 +443,6 @@ private:
 
                 if (parseExpression())
                 {
-                    variables[i] = stack.top();
-                    stack.pop();
-
                     return true;
                 }
             }
@@ -444,10 +452,6 @@ private:
 
         if (parseExpression())
         {
-            current = program.find(stack.top().number);
-            current--;
-            stack.pop();
-
             return true;
         }
         return false;
@@ -455,8 +459,6 @@ private:
 
     bool parseList()
     {
-        for (auto i : program)
-            cout << i.first << ' ' << i.second << endl;
         return true;
     }
 
@@ -469,30 +471,11 @@ private:
 
     bool parseRun()
     {
-        stack.clear();
-        current = program.begin();
-        current++;
-
-        while (current != program.end())
-        {
-            
-            seek = 0;
-
-            line = current->second;
-
-            if (!parseStatement())
-                return false;
-
-            current++;
-        }
         return true;
     }
 
     bool parseEnd()
     {
-        current = program.end();
-        current--;
-
         return true;
     }
 
@@ -507,15 +490,10 @@ private:
         {
             while (parse('+') || parse('-'))
             {
-                auto function = tokens[stack.top().token];
-                stack.pop();
-                
                 if (!parseTerm())
                 {
                     return false;
                 }
-
-                function(*this);
             }
 
             return true;
@@ -530,15 +508,10 @@ private:
         {
             while (parse('*') || parse('/'))
             {
-                auto function = tokens[stack.top().token];
-                stack.pop();
-
                 if (!parseFactor())
                 {
                     return false;
                 }
-
-                function(*this);
             }
 
             return true;
@@ -553,10 +526,8 @@ private:
             return true;
         else if (parse('('))
         {
-            stack.pop();
             if (parseExpression() && parse(')'))
             {
-                stack.pop();
                 return true;
             }
         }
@@ -568,9 +539,6 @@ private:
     {
         if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
         {
-            stack.push(variables[line[seek] - 'A']);
-            seek++;
-
             eatBlank();
 
             return true;
@@ -588,8 +556,6 @@ private:
             case '=':
                 seek++;
 
-                stack.push(token::eq);
-
                 eatBlank();
 
                 return true;
@@ -601,16 +567,12 @@ private:
                 {
                     seek++;
 
-                    stack.push(token::ge);
-
                     eatBlank();
 
                     return true;
                 }
 
                 eatBlank();
-
-                stack.push(token::gt);
 
                 return true;
 
@@ -624,23 +586,18 @@ private:
                     case '=':
                         seek++;
 
-                        stack.push(token::le);
-
                         eatBlank();
 
                         return true;
 
                     case '>':
                         seek++;
-                        stack.push(token::ne);
 
                         eatBlank();
 
                         return true;
                     }
                 }
-
-                stack.push(token::lt);
 
                 eatBlank();
 
@@ -653,66 +610,62 @@ private:
 
     bool add()
     {
-        stack[1] += stack[0];
-        stack.pop();
         return true;
     }
 
     bool sub()
     {
-        stack[1] -= stack[0];
-        stack.pop();
         return true;
     }
+
     bool mult()
     {
-        stack[1] *= stack[0];
-        stack.pop();
         return true;
     }
 
     bool div()
     {
-        stack[1] /= stack[0];
-        stack.pop();
         return true;
     }
 
 
     bool eq()
     {
-        stack[1] = stack[1] == stack[0];
-        stack.pop();
         return true;
     }
+
     bool ne()
     {
-        stack[1] = stack[1] != stack[0];
-        stack.pop();
         return true;
     }
+
     bool gt()
     {
-        stack[1] = stack[1] > stack[0];
-        stack.pop();
         return true;
     }
+
     bool lt()
     {
-        stack[1] = stack[1] < stack[0];
-        stack.pop();
         return true;
     }
+
     bool ge()
     {
-        stack[1] = stack[1] >= stack[0];
-        stack.pop();
         return true;
     }
+
     bool le()
     {
-        stack[1] = stack[1] <= stack[0];
-        stack.pop();
+        return true;
+    }
+
+    bool move()
+    {
+        return true;
+    }
+
+    bool push()
+    {
         return true;
     }
 
