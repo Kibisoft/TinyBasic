@@ -424,29 +424,7 @@ enum class token
     gosub,
     _return,
     let,
-    plus,
-    minus,
-    mult,
-    div,
-    lparen,
-    rparen,
-    eq,
-    ne,
-    gt,
-    lt,
-    ge,
-    le,
-    var,
-    assign
 };
-
-
-enum class type
-{
-    integer,
-    token
-};
-
 
 class ParserResult
 {
@@ -468,7 +446,6 @@ public:
     ParserResult(InstructionSet is) { valid = true; value = is; }
     operator InstructionSet() { return get<InstructionSet>(value); }
 };
-
 
 class TinyBasic;
 
@@ -505,7 +482,7 @@ private:
     string empty;
     string& line = empty;
     size_t seek = 0;
-    tokenizer tokens = {    { "PRINT", token::print, &TinyBasic::parsePrint} ,
+    tokenizer tokens = {    { "PRINT", token::print, &TinyBasic::parsePrint},
                             { "IF", token::_if,&TinyBasic::parseIf},
                             { "THEN", token::then, &TinyBasic::nop},
                             { "ELSE", token::_else, &TinyBasic::nop},
