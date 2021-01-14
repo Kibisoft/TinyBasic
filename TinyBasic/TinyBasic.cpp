@@ -442,8 +442,6 @@ private:
     map<string, function<ParserResult(TinyBasic&)>> functions = {
         { "PRINT", &TinyBasic::parsePrint},
         { "IF",&TinyBasic::parseIf},
-        { "THEN", &TinyBasic::nop},
-        { "ELSE", &TinyBasic::nop},
         { "GOTO",&TinyBasic::parseGoto},
         { "GOSUB",&TinyBasic::parseGosub},
         { "RETURN",&TinyBasic::parseReturn},
@@ -958,11 +956,6 @@ private:
         }
 
         return false;
-    }
-    
-    ParserResult nop()
-    {
-        return true;
     }
 };
 
