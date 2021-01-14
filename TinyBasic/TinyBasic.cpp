@@ -25,6 +25,7 @@
 //SOFTWARE.
 
 // best is 3898762
+// best is 0471557
 
 #include <Windows.h>
 
@@ -405,27 +406,6 @@ public:
     }
 };
 
-
-
-
-enum class token
-{
-    null,
-    value,
-    run,
-    end,
-    list,
-    clear,
-    print,
-    _if,
-    then,
-    _else,
-    _goto,
-    gosub,
-    _return,
-    let,
-};
-
 class ParserResult
 {
 private:
@@ -449,32 +429,8 @@ public:
 
 class TinyBasic;
 
-class tokenizer
-{
-private:
-    map<string, token> tokens;
-    map<token, function<ParserResult(TinyBasic&)>> functions;
-
-public:
-    tokenizer(std::initializer_list<tuple<string, token, function<ParserResult(TinyBasic&)>>> initializer);
-
-    token operator[](const string& str) const
-    {
-        auto token = tokens.find(str);
-        if (token != tokens.end())
-            return token->second;
-        return token::null;
-    }
-
-    function<ParserResult(TinyBasic&)> operator[](token token) const
-    {
-        return functions.find(token)->second;
-    }
-};
-
 class TinyBasic
 {
-    friend tokenizer;
 private:
 
     map<size_t, InstructionSet> program;
@@ -482,18 +438,20 @@ private:
     string empty;
     string& line = empty;
     size_t seek = 0;
-    tokenizer tokens = {    { "PRINT", token::print, &TinyBasic::parsePrint},
-                            { "IF", token::_if,&TinyBasic::parseIf},
-                            { "THEN", token::then, &TinyBasic::nop},
-                            { "ELSE", token::_else, &TinyBasic::nop},
-                            { "GOTO", token::_goto,&TinyBasic::parseGoto},
-                            { "GOSUB", token::gosub,&TinyBasic::parseGosub},
-                            { "RETURN", token::_return,&TinyBasic::parseReturn},
-                            { "LET", token::let, &TinyBasic::parseLet},
-                            { "CLEAR", token::clear, &TinyBasic::parseClear},
-                            { "LIST", token::list, &TinyBasic::parseList},
-                            { "RUN", token::run, &TinyBasic::parseRun},
-                            { "END", token::end, &TinyBasic::parseEnd}
+
+    map<string, function<ParserResult(TinyBasic&)>> functions = {
+        { "PRINT", &TinyBasic::parsePrint},
+        { "IF",&TinyBasic::parseIf},
+        { "THEN", &TinyBasic::nop},
+        { "ELSE", &TinyBasic::nop},
+        { "GOTO",&TinyBasic::parseGoto},
+        { "GOSUB",&TinyBasic::parseGosub},
+        { "RETURN",&TinyBasic::parseReturn},
+        { "LET", &TinyBasic::parseLet},
+        { "CLEAR", &TinyBasic::parseClear},
+        { "LIST", &TinyBasic::parseList},
+        { "RUN", &TinyBasic::parseRun},
+        { "END", &TinyBasic::parseEnd}
     };
  
 public:
@@ -561,6 +519,20 @@ private:
         return false;
     }
 
+    bool parse(const string& string)
+    {
+        size_t i = 0;
+        while (line[seek] == string[i])
+        {
+            seek++;
+            i++;
+        }
+
+        eatBlank();
+
+        return i == string.size();
+    }
+
     ParserResult parseNumber()
     {
         if (!eol() && line[seek] >= '0' && line[seek] <= '9')
@@ -605,24 +577,14 @@ private:
                 seek++;
             }
 
-            token token = tokens[line.substr(i, seek - i)];
+            auto function = functions[line.substr(i, seek - i)];
 
             eatBlank();
 
-            return  tokens[token](*this);
+            return  function(*this);
         }
 
         seek = i;
-        return false;
-    }
-
-    bool parseToken(token token)
-    {
-        if (parseToken())
-        {
-            return true;
-        }
-
         return false;
     }
 
@@ -652,7 +614,7 @@ private:
             {
                 if (ParserResult exp2 = parseExpression())
                 {
-                    if (parseToken(token::then))
+                    if (parse("THEN"))
                     {
                         if (ParserResult statement = parseStatement())
                         {
@@ -1004,23 +966,13 @@ private:
     }
 };
 
-tokenizer::tokenizer(std::initializer_list<tuple<string, token, function<ParserResult(TinyBasic&)>>> initializer)
-{
-    functions[token::null] = &TinyBasic::parseNull;
-    for (auto item : initializer)
-    {
-        tokens[get<0>(item)] = get<1>(item);
-        functions[get<1>(item)] = get<2>(item);
-    }
-}
-
 int main()
 {
     TinyBasic basic;
 
     basic.parseLine("10 LET A=1");
     basic.parseLine("20 LET A=A+1");
-    basic.parseLine("30 IF A>100000000 THEN GOTO 50");
+    basic.parseLine("30 IF A>1000000 THEN GOTO 50");
     basic.parseLine("40 GOTO 20");
     basic.parseLine("50 PRINT 0");
 
