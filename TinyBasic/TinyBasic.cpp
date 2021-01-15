@@ -87,7 +87,6 @@ public:
     void push(instruction instruction) { vector<size_t>::push_back((size_t)instruction); }
     void push_value(double value) { vector<size_t>::push_back(*(size_t*)&value); }
     void push_value(size_t value) { vector<size_t>::push_back(value); }
-    void push_variable(unsigned char variable) { vector<size_t>::push_back((size_t)(variable - 'A')); }
 
     void operator+=(const InstructionSet& set)
     { 
