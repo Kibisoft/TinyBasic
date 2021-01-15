@@ -38,32 +38,34 @@
 
 using namespace std;
 
-const unsigned char i_nop = 0;
-const unsigned char i_push = 1;
-const unsigned char i_pop = 2;
-const unsigned char i_jne = 3;
+enum class instruction : size_t
+{
+    nop = 0,
+    push = 1,
+    pop = 2,
+    jne = 3,
 
-const unsigned char i_plus = 4;
-const unsigned char i_minus = 5;
-const unsigned char i_mult = 6;
-const unsigned char i_div = 7;
+    plus = 4,
+    minus = 5,
+    mult = 6,
+    div = 7,
 
-const unsigned char i_setvar = 8;
-const unsigned char i_getvar = 9;
+    setvar = 8,
+    getvar = 9,
 
-const unsigned char i_goto = 10;
-const unsigned char i_gosub = 11;
-const unsigned char i_return = 12;
+    got = 10,
+    gosub = 11,
+    ret = 12,
 
-const unsigned char i_eq = 13;
-const unsigned char i_ne = 14;
-const unsigned char i_gt = 15;
-const unsigned char i_lt = 16;
-const unsigned char i_ge = 17;
-const unsigned char i_le = 18;
+    eq = 13,
+    ne = 14,
+    gt = 15,
+    lt = 16,
+    ge = 17,
+    le = 18,
 
-const unsigned char i_print = 19;
-
+    print = 19
+};
 
 template<class T> class stack : private vector<T>
 {
@@ -82,7 +84,7 @@ class InstructionSet : private vector<size_t>
 public:
     size_t size() const { return vector<size_t>::size(); }
 
-    void push_instruction(size_t instruction) { vector<size_t>::push_back(instruction); }
+    void push(instruction instruction) { vector<size_t>::push_back((size_t)instruction); }
     void push_value(double value) { vector<size_t>::push_back(*(size_t*)&value); }
     void push_value(size_t value) { vector<size_t>::push_back(value); }
     void push_variable(unsigned char variable) { vector<size_t>::push_back((size_t)(variable - 'A')); }
@@ -596,7 +598,7 @@ private:
         if (ParserResult expression = parseExpression())
         {
             InstructionSet set;
-            set.push_instruction(i_print);
+            set.push(instruction::print);
             set += expression;
 
             return set;
@@ -621,7 +623,7 @@ private:
                             set += op;
                             set += exp1;
                             set += exp2;
-                            set.push_instruction(i_jne);
+                            set.push(instruction::jne);
                             set.push_value(((InstructionSet)statement).size());
                             set += statement;
 
@@ -642,7 +644,7 @@ private:
         {
             InstructionSet set;
 
-            set.push_instruction(i_goto);
+            set.push(instruction::got);
             set += expression;
 
             return set;
@@ -682,7 +684,7 @@ private:
                 {
                     InstructionSet set;
 
-                    set.push_instruction(i_setvar);
+                    set.push(instruction::setvar);
                     set.push_value(variable);
                     set += expression;
 
@@ -747,7 +749,7 @@ private:
 
                         InstructionSet plus;
 
-                        plus.push_instruction(i_plus);
+                        plus.push(instruction::plus);
                         plus += set;
                         plus += b;
 
@@ -764,7 +766,7 @@ private:
 
                         InstructionSet minus;
 
-                        minus.push_instruction(i_minus);
+                        minus.push(instruction::minus);
                         minus += set;
                         minus += b;
 
@@ -802,7 +804,7 @@ private:
 
                         InstructionSet mult;
 
-                        mult.push_instruction(i_mult);
+                        mult.push(instruction::mult);
                         mult += set;
                         mult += b;
 
@@ -819,7 +821,7 @@ private:
 
                         InstructionSet div;
 
-                        div.push_instruction(i_div);
+                        div.push(instruction::div);
                         div += set;
                         div += b;
 
@@ -842,7 +844,7 @@ private:
         {
             InstructionSet set;
 
-            set.push_instruction(i_push);
+            set.push(instruction::push);
             set.push_value((double)number);
 
             return set;
@@ -851,7 +853,7 @@ private:
         {
             InstructionSet set;
 
-            set.push_instruction(i_getvar);
+            set.push(instruction::getvar);
             set.push_value((size_t)variable);
 
             return set;
@@ -895,7 +897,7 @@ private:
 
                 eatBlank();
 
-                set.push_instruction(i_eq);
+                set.push(instruction::eq);
 
                 return set;
 
@@ -908,7 +910,7 @@ private:
 
                     eatBlank();
 
-                    set.push_instruction(i_ge);
+                    set.push(instruction::ge);
 
                     return set;
 
@@ -916,7 +918,7 @@ private:
 
                 eatBlank();
 
-                set.push_instruction(i_gt);
+                set.push(instruction::gt);
 
                 return set;
 
@@ -932,7 +934,7 @@ private:
 
                         eatBlank();
 
-                        set.push_instruction(i_le);
+                        set.push(instruction::le);
 
                         return set;
 
@@ -941,7 +943,7 @@ private:
 
                         eatBlank();
 
-                        set.push_instruction(i_ne);
+                        set.push(instruction::ne);
 
                         return set;
                     }
@@ -949,7 +951,7 @@ private:
 
                 eatBlank();
 
-                set.push_instruction(i_lt);
+                set.push(instruction::lt);
 
                 return set;
             }
