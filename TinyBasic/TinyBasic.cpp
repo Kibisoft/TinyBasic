@@ -415,7 +415,6 @@ private:
 public:
 
     ParserResult(bool b) { valid = b; }
-    const ParserResult& operator=(bool b) { valid = b; return *this; }
     operator bool() { return valid; }
 
     ParserResult(double d) { value = d; valid = true; }
