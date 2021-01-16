@@ -147,24 +147,19 @@ private:
 
 private:
 
-    void nop() { current_instruction++; }
-
     void i_push()
     {
-        stack.push(*(double*)(&current_line->second[current_instruction + 1])); // var name
-        current_instruction += 2;
+        stack.push(*(double*)(&current_line->second[current_instruction])); // var name
+        current_instruction ++;
     }
 
     void i_pop()
     {
-        current_instruction++;
         stack.pop();
     }
 
     void i_jne()
     {
-        current_instruction++;
-
         if (!stack.top())
         {
             size_t j = current_line->second[current_instruction + 1];
@@ -179,7 +174,6 @@ private:
 
     void i_plus()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -189,7 +183,6 @@ private:
 
     void i_minus()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -199,7 +192,6 @@ private:
 
     void i_mult()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -209,7 +201,6 @@ private:
 
     void i_div()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -219,7 +210,6 @@ private:
 
     void i_eq()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -229,7 +219,6 @@ private:
 
     void i_ne()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -239,7 +228,6 @@ private:
 
     void i_gt()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -249,7 +237,6 @@ private:
 
     void i_lt()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -259,7 +246,6 @@ private:
 
     void i_ge()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -269,7 +255,6 @@ private:
 
     void i_le()
     {
-        current_instruction++;
         execInstruction();
         execInstruction();
 
@@ -279,7 +264,6 @@ private:
 
     void i_print()
     {
-        current_instruction++;
         execInstruction();
 
         cout << stack.top() << endl;
@@ -289,7 +273,6 @@ private:
 
     void i_input()
     {
-        current_instruction++;
         size_t variable = current_line->second[current_instruction];
         current_instruction++;
 
@@ -299,7 +282,6 @@ private:
 
     void i_setvar()
     {
-        current_instruction++;
         size_t variable = current_line->second[current_instruction];
         current_instruction++;
         execInstruction();
@@ -310,7 +292,6 @@ private:
 
     void i_getvar()
     {
-        current_instruction++;
         size_t variable = current_line->second[current_instruction];
         current_instruction++;
 
@@ -319,7 +300,6 @@ private:
 
     void i_goto()
     {
-        current_instruction++;
         execInstruction();
         size_t line = (size_t)stack.top();
         stack.pop();
@@ -332,7 +312,6 @@ private:
 
     void i_gosub()
     {
-        current_instruction++;
         execInstruction();
         size_t line = (size_t)stack.top();
         stack.pop();
@@ -349,7 +328,6 @@ private:
 
     void i_return()
     {
-        current_instruction++;
         size_t line = (size_t)stack.top();
 
         current_line = program.find(line);
@@ -365,12 +343,13 @@ private:
 
     void i_nop()
     {
-        current_instruction++;
     }
 
     void execInstruction()
     {
-        instructions[current_line->second[current_instruction]](*this);
+        function<void(VirtualMachine&)> instruction = instructions[current_line->second[current_instruction]];
+        current_instruction++;
+        instruction(*this);
     }
 
     void exec()
@@ -428,8 +407,6 @@ public:
     ParserResult(InstructionSet is) { valid = true; value = is; }
     operator InstructionSet() { return get<InstructionSet>(value); }
 };
-
-class TinyBasic;
 
 class TinyBasic
 {
