@@ -56,15 +56,16 @@ enum class instruction : size_t
     got = 10,
     gosub = 11,
     ret = 12,
+    end = 13,
 
-    eq = 13,
-    ne = 14,
-    gt = 15,
-    lt = 16,
-    ge = 17,
-    le = 18,
+    eq = 14,
+    ne = 15,
+    gt = 16,
+    lt = 17,
+    ge = 18,
+    le = 19,
 
-    print = 19
+    print = 20
 };
 
 template<class T> class stack : private vector<T>
@@ -129,6 +130,8 @@ private:
         &VirtualMachine::i_goto,
         &VirtualMachine::i_gosub,
         &VirtualMachine::i_return,
+
+        &VirtualMachine::i_end,
 
         &VirtualMachine::i_eq,
         &VirtualMachine::i_ne,
@@ -277,7 +280,7 @@ private:
         current_instruction++;
         execInstruction();
 
-        cout << stack.top();
+        cout << stack.top() << endl;
 
         stack.pop();
     }
@@ -363,6 +366,11 @@ private:
         current_instruction = current_line->second.size();
     }
 
+    void i_end()
+    {
+        current_line = program.end();
+    }
+
     void i_nop()
     {
         current_instruction++;
@@ -436,6 +444,7 @@ class TinyBasic
 private:
 
     map<size_t, InstructionSet> program;
+    map<size_t, string> source;
 
     string empty;
     string& line = empty;
@@ -464,6 +473,8 @@ public:
 
     int loop()
     {
+        cout << "Tiny Basic v0.1 by Fred Morales" << endl;
+
         while (true)
         {
             getline(cin, line);
@@ -493,10 +504,12 @@ private:
 
         if (ParserResult number = parseNumber())
         {
+            size_t s = seek;
             if (ParserResult set = parseStatement())
             {
                 double n = number;
                 program[(size_t)n] = set;
+                source[(size_t)n] = &line[s];
             }
             return true;
         }
@@ -713,6 +726,10 @@ private:
 
     ParserResult parseList()
     {
+        for (auto l : source)
+        {
+            cout << l.first << ' ' << l.second << endl;
+        }
         return true;
     }
 
@@ -734,7 +751,10 @@ private:
 
     ParserResult parseEnd()
     {
-        return true;
+        InstructionSet set;
+        set.push(instruction::end);
+
+        return set;
     }
 
     ParserResult parseExpression()
