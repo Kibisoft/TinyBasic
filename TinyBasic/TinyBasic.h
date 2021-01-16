@@ -26,7 +26,9 @@
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //SOFTWARE.
 
+#ifdef _DEBUG
 #include <Windows.h>
+#endif
 
 #include <functional>
 #include <iostream>
@@ -65,7 +67,8 @@ enum class instruction : size_t
     le = 19,
 
     print = 20,
-    input = 21
+    input = 21,
+    clear = 22
 };
 
 template<class T> class stack : private vector<T>
@@ -141,6 +144,7 @@ private:
 
         &VirtualMachine::i_print,
         &VirtualMachine::i_input,
+        &VirtualMachine::i_clear,
     };
 
 private:
@@ -273,7 +277,11 @@ private:
     {
         cout << "? ";
         cin >> variables[current_line->second[current_instruction]];
-        current_instruction++;
+    }
+
+    void i_clear()
+    {
+        cout << "\x1B[2J\x1B[H";
     }
 
     void i_setvar()
@@ -363,8 +371,10 @@ public:
         current_line = program.begin();
         current_line++;
 
+#ifdef _DEBUG
         LARGE_INTEGER s, e;
         QueryPerformanceCounter(&s);
+#endif
 
         try
         {
@@ -375,8 +385,11 @@ public:
             }
         }
         catch (...) {}
+        
+#ifdef _DEBUG
         QueryPerformanceCounter(&e);
         cout << e.QuadPart - s.QuadPart << endl;
+#endif
     }
 };
 
@@ -655,7 +668,6 @@ private:
         return false;
     }
 
-
     ParserResult parseGoto()
     {
         if (ParserResult expression = parseExpression())
@@ -714,9 +726,7 @@ private:
 
     ParserResult parseClear()
     {
-        for (size_t i = 0; i < 100; i++)
-            cout << endl;
-        return true;
+        return instruction::clear;
     }
 
     ParserResult parseRun()
@@ -841,21 +851,6 @@ private:
         return false;
     }
 
-    ParserResult parseVariable()
-    {
-        if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
-        {
-            size_t variable = (size_t)(line[seek] - 'A');
-            seek++;
-
-            eatBlank();
-
-            return variable;
-        }
-
-        return false;
-    }
-
     ParserResult parseRelop()
     {
         if (!eol())
@@ -913,6 +908,21 @@ private:
 
                 return instruction::lt;
             }
+        }
+
+        return false;
+    }
+
+    ParserResult parseVariable()
+    {
+        if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
+        {
+            size_t variable = (size_t)(line[seek] - 'A');
+            seek++;
+
+            eatBlank();
+
+            return variable;
         }
 
         return false;

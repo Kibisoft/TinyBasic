@@ -43,6 +43,7 @@ namespace UnitTests
 			basic.parseLine("40 PRINT 40");
 			basic.parseLine("50 RETURN");
 			basic.parseLine("60 PRINT 60");
+			basic.parseLine("70 CLEAR");
 
 			basic.run();
 		}
