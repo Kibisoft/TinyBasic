@@ -65,7 +65,8 @@ enum class instruction : size_t
     ge = 18,
     le = 19,
 
-    print = 20
+    print = 20,
+    input = 21
 };
 
 template<class T> class stack : private vector<T>
@@ -141,6 +142,7 @@ private:
         &VirtualMachine::i_le,
     
         &VirtualMachine::i_print,
+        &VirtualMachine::i_input,
     };
 
 private:
@@ -285,24 +287,14 @@ private:
         stack.pop();
     }
 
-    void i_set()
+    void i_input()
     {
         current_instruction++;
-        execInstruction();
-        execInstruction();
-
-        stack[1] += stack[0];
-        stack.pop();
-    }
-
-    void i_get()
-    {
+        size_t variable = current_line->second[current_instruction];
         current_instruction++;
-        execInstruction();
-        execInstruction();
 
-        stack[1] += stack[0];
-        stack.pop();
+        cout << "? ";
+        cin >> variables[variable];
     }
 
     void i_setvar()
@@ -452,6 +444,7 @@ private:
 
     map<string, function<ParserResult(TinyBasic&)>> functions = {
         { "PRINT", &TinyBasic::parsePrint},
+        { "INPUT", &TinyBasic::parseInput},
         { "IF",&TinyBasic::parseIf},
         { "GOTO",&TinyBasic::parseGoto},
         { "GOSUB",&TinyBasic::parseGosub},
@@ -616,6 +609,27 @@ private:
 
             return set;
         }
+        return false;
+    }
+
+    ParserResult parseInput()
+    {
+        if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
+        {
+            size_t variable = (size_t)(line[seek] - 'A');
+
+            seek++;
+
+            eatBlank();
+
+            InstructionSet set;
+
+            set.push(instruction::input);
+            set.push_value(variable);
+
+            return set;
+        }
+        
         return false;
     }
 
@@ -994,12 +1008,9 @@ int main()
 {
     TinyBasic basic;
 
-    basic.parseLine("10 PRINT 10");
-    basic.parseLine("20 GOSUB 50");
-    basic.parseLine("30 PRINT 30");
-    basic.parseLine("40 GOTO 20");
-    basic.parseLine("50 PRINT 50");
-    basic.parseLine("60 RETURN");
+    basic.parseLine("10 INPUT A");
+    basic.parseLine("20 PRINT A");
+    basic.parseLine("30 GOTO 20");
 
     return basic.loop();
 }
