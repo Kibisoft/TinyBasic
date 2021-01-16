@@ -344,7 +344,7 @@ private:
 
         current_line++;
 
-        stack.push(*(double*)&current_line->first);
+        stack.push((double)current_line->first);
 
         current_line = program.find(line);
         current_line--;
@@ -355,10 +355,12 @@ private:
     void i_return()
     {
         current_instruction++;
-        size_t variable = current_line->second[current_instruction];
-        current_instruction++;
+        size_t line = (size_t)stack.top();
 
-        stack.push(variables[variable]);
+        current_line = program.find(line);
+        current_line--;
+
+        current_instruction = current_line->second.size();
     }
 
     void i_nop()
@@ -652,16 +654,25 @@ private:
 
     ParserResult parseGosub()
     {
-        if (parseExpression())
+        if (ParserResult expression = parseExpression())
         {
-            return true;
+            InstructionSet set;
+
+            set.push(instruction::gosub);
+            set += expression;
+
+            return set;
         }
         return false;
     }
 
     ParserResult parseReturn()
     {
-        return true;
+        InstructionSet set;
+
+        set.push(instruction::ret);
+
+        return set;
     }
 
     ParserResult parseLet()
@@ -963,11 +974,12 @@ int main()
 {
     TinyBasic basic;
 
-    basic.parseLine("10 LET A=1");
-    basic.parseLine("20 LET A=A+1");
-    basic.parseLine("30 IF A>1000000 THEN GOTO 50");
+    basic.parseLine("10 PRINT 10");
+    basic.parseLine("20 GOSUB 50");
+    basic.parseLine("30 PRINT 30");
     basic.parseLine("40 GOTO 20");
-    basic.parseLine("50 PRINT 0");
+    basic.parseLine("50 PRINT 50");
+    basic.parseLine("60 RETURN");
 
     return basic.loop();
 }
