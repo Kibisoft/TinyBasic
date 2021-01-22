@@ -104,6 +104,14 @@ public:
     size_t& operator[](size_t i) { return vector<size_t>::operator[](i); }
 };
 
+class VirtualMachine;
+
+class Instruction : public function<void(VirtualMachine&)>
+{
+public:
+    Instruction(function<void(VirtualMachine&)> f) : function<void(VirtualMachine&)>(f) {}
+};
+
 class VirtualMachine
 {
 private:
@@ -115,36 +123,36 @@ private:
     size_t current_instruction;
     map<size_t, InstructionSet>::iterator current_line;
 
-    vector<function<void(VirtualMachine&)>> instructions = {
-        &VirtualMachine::i_nop,
-        &VirtualMachine::i_push,
-        &VirtualMachine::i_pop,
-        &VirtualMachine::i_jne, // jump not equal
+    vector<Instruction> instructions = {
+        Instruction(&VirtualMachine::i_nop),
+        Instruction(&VirtualMachine::i_push),
+        Instruction(&VirtualMachine::i_pop),
+        Instruction(&VirtualMachine::i_jne), // jump not equal
 
-        &VirtualMachine::i_plus,
-        &VirtualMachine::i_minus,
-        &VirtualMachine::i_mult,
-        &VirtualMachine::i_div,
+        Instruction(&VirtualMachine::i_plus),
+        Instruction(&VirtualMachine::i_minus),
+        Instruction(&VirtualMachine::i_mult),
+        Instruction(&VirtualMachine::i_div),
 
-        &VirtualMachine::i_setvar,
-        &VirtualMachine::i_getvar,
+        Instruction(&VirtualMachine::i_setvar),
+        Instruction(&VirtualMachine::i_getvar),
 
-        &VirtualMachine::i_goto,
-        &VirtualMachine::i_gosub,
-        &VirtualMachine::i_return,
+        Instruction(&VirtualMachine::i_goto),
+        Instruction(&VirtualMachine::i_gosub),
+        Instruction(&VirtualMachine::i_return),
 
-        &VirtualMachine::i_end,
+        Instruction(&VirtualMachine::i_end),
 
-        &VirtualMachine::i_eq,
-        &VirtualMachine::i_ne,
-        &VirtualMachine::i_gt,
-        &VirtualMachine::i_lt,
-        &VirtualMachine::i_ge,
-        &VirtualMachine::i_le,
+        Instruction(&VirtualMachine::i_eq),
+        Instruction(&VirtualMachine::i_ne),
+        Instruction(&VirtualMachine::i_gt),
+        Instruction(&VirtualMachine::i_lt),
+        Instruction(&VirtualMachine::i_ge),
+        Instruction(&VirtualMachine::i_le),
 
-        &VirtualMachine::i_print,
-        &VirtualMachine::i_input,
-        &VirtualMachine::i_clear,
+        Instruction(&VirtualMachine::i_print),
+        Instruction(&VirtualMachine::i_input),
+        Instruction(&VirtualMachine::i_clear),
     };
 
 private:
