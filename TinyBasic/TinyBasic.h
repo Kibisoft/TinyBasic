@@ -71,12 +71,13 @@ enum class instruction : size_t
     clear = 22,
 
     call = 23,
+    call_proc = 24
 };
 
 template<class T> class stack : private vector<T>
 {
 public:
-    void push() { vector<T>::push_back(); }
+    void push() { vector<T>::push_back(0.0); }
     void push(T t) { vector<T>::push_back(t); }
     void pop() { vector<T>::pop_back(); }
     const T& top() { return vector<T>::back(); }
@@ -157,6 +158,7 @@ private:
         Instruction(&VirtualMachine::i_clear),
 
         Instruction(&VirtualMachine::i_call),
+        Instruction(&VirtualMachine::i_call_proc),
     };
 
 private:
@@ -356,6 +358,25 @@ private:
     }
 
     void i_call()
+    {
+        stack.push();
+
+        size_t nb_of_params = current_line->second[current_instruction];
+        current_instruction++;
+
+        void(*callback)(VirtualMachine&) = (void(*)(VirtualMachine&))current_line->second[current_instruction];
+        current_instruction++;
+
+        for (size_t i = 0; i < nb_of_params; i++)
+            execInstruction();
+
+        callback(*this);
+
+        for (size_t i = 0; i < nb_of_params; i++)
+            stack.pop();
+    }
+
+    void i_call_proc()
     {
         size_t nb_of_params = current_line->second[current_instruction];
         current_instruction++;
@@ -667,7 +688,7 @@ private:
                 if (command != commands.end())
                 {
                     eatBlank();
-                    return parseCommand(get<0>(command->second), get<1>(command->second), get<2>(command->second));
+                    return parseCommand(get<0>(command->second), get<1>(command->second), get<2>(command->second), instruction::call_proc);
                 }
              }
         }
@@ -922,10 +943,15 @@ private:
         {
             return ParserResult(instruction::push) + (double)number;
         }
+        else if (ParserResult function = parseFunction())
+        {
+            return function;
+        }
         else if (ParserResult variable = parseVariable())
         {
             return ParserResult(instruction::getvar) + (size_t)variable;
         }
+
         else if (parse('('))
         {
             if (ParserResult exp = parseExpression() && parse(')'))
@@ -1014,9 +1040,11 @@ private:
         return false;
     }
 
-    ParserResult parseCommand(size_t parameters, void(*f)(VirtualMachine&), bool parenthesis)
+    ParserResult parseCommand(size_t parameters, void(*f)(VirtualMachine&), bool parenthesis, instruction inst)
     {
-        ParserResult set = ParserResult(instruction::call) + parameters + (size_t)f;
+        size_t i = seek;
+
+        ParserResult set = ParserResult(inst) + parameters + (size_t)f;
 
         eatBlank();
 
@@ -1029,7 +1057,10 @@ private:
                 if (ParserResult exp = parseExpression())
                     set = set + exp;
                 else
+                {
+                    seek = i;
                     return false;
+                }
 
                 parameters--;
 
@@ -1040,20 +1071,29 @@ private:
                     if (ParserResult exp = parseExpression())
                         set = set + exp;
                     else
+                    {
+                        seek = i;
                         return false;
+                    }
 
                     parameters--;
                 }
             }
 
             if (parenthesis && !parse(')'))
+            {
+                seek = i;
                 return false;
+            }
+
+            return set;
         }
-        return set;
+
+        return false;
     }
 
     ParserResult parseFunction(size_t parameters, void(*f)(VirtualMachine&), bool parenthesis)
     {
-        return ParserResult(instruction::push) + 0.0 + parseCommand(parameters, f, parenthesis);
+        return parseCommand(parameters, f, parenthesis, instruction::call);
     }
 };
