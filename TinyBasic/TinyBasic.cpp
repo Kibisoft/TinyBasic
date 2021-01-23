@@ -32,5 +32,13 @@ int main()
 {
     TinyBasic basic;
 
+    basic.commands["ACCEPT"] = { 0, [](VirtualMachine& vm) {} , false};
+
+    basic.functions["ABS"] = { 1, [](VirtualMachine& vm) { vm[1] = abs(vm[0]); }, true };
+    basic.functions["ACS"] = { 1, [](VirtualMachine& vm) { vm[1] = acos(vm[0]); }, true };
+    //basic.functions["ASC"] = { 1, [](VirtualMachine& vm) { } };
+    basic.functions["ASN"] = { 1, [](VirtualMachine& vm) { vm[1] = asin(vm[0]); }, true };
+    basic.functions["ATN"] = { 1, [](VirtualMachine& vm) { vm[1] = atan(vm[0]); }, true };
+
     return basic.loop();
 }

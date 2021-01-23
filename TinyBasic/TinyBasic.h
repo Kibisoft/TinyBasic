@@ -68,7 +68,9 @@ enum class instruction : size_t
 
     print = 20,
     input = 21,
-    clear = 22
+    clear = 22,
+
+    call = 23,
 };
 
 template<class T> class stack : private vector<T>
@@ -153,6 +155,8 @@ private:
         Instruction(&VirtualMachine::i_print),
         Instruction(&VirtualMachine::i_input),
         Instruction(&VirtualMachine::i_clear),
+
+        Instruction(&VirtualMachine::i_call),
     };
 
 private:
@@ -351,6 +355,23 @@ private:
         current_line = program.end();
     }
 
+    void i_call()
+    {
+        size_t nb_of_params = current_line->second[current_instruction];
+        current_instruction++;
+
+        void(*callback)(VirtualMachine&) = (void(*)(VirtualMachine&))current_line->second[current_instruction];
+        current_instruction++;
+
+        for (size_t i = 0; i < nb_of_params; i++)
+            execInstruction();
+
+        callback(*this);
+
+        for (size_t i = 0; i < nb_of_params; i++)
+            stack.pop();
+    }
+
     void i_nop() {}
 
     void execInstruction()
@@ -370,6 +391,14 @@ private:
     }
 
 public:
+
+    double operator[](size_t i) const { return stack[i]; }
+    double& operator[](size_t i) { return stack[i]; }
+
+    double top()
+    {
+        return stack.top();
+    }
 
     void run(const map<size_t, InstructionSet>& p)
     {
@@ -467,19 +496,25 @@ private:
     string& line = empty;
     size_t seek = 0;
 
-    map<string, function<ParserResult(TinyBasic&)>> functions = {
-        { "PRINT", &TinyBasic::parsePrint},
-        { "INPUT", &TinyBasic::parseInput},
-        { "IF",&TinyBasic::parseIf},
-        { "GOTO",&TinyBasic::parseGoto},
-        { "GOSUB",&TinyBasic::parseGosub},
-        { "RETURN",&TinyBasic::parseReturn},
-        { "LET", &TinyBasic::parseLet},
+    map<string, function<ParserResult(TinyBasic&)>> instructions = {
+        { "CALL", &TinyBasic::parseCall},
         { "CLEAR", &TinyBasic::parseClear},
+        { "END", &TinyBasic::parseEnd},
+        { "GOSUB", &TinyBasic::parseGosub},
+        { "GOTO", &TinyBasic::parseGoto},
+        { "IF", &TinyBasic::parseIf},
+        { "INPUT", &TinyBasic::parseInput},
+        { "LET", &TinyBasic::parseLet},
         { "LIST", &TinyBasic::parseList},
+        { "PRINT", &TinyBasic::parsePrint},
+        { "RETURN", &TinyBasic::parseReturn},
         { "RUN", &TinyBasic::parseRun},
-        { "END", &TinyBasic::parseEnd}
     };
+
+public:
+
+    map<string, tuple<size_t, void(*)(VirtualMachine&), bool>> functions;
+    map<string, tuple<size_t, void(*)(VirtualMachine&), bool>> commands;
 
 public:
 
@@ -578,12 +613,12 @@ private:
     {
         if (!eol() && line[seek] >= '0' && line[seek] <= '9')
         {
-            double number = line[seek] - '0';
+            double number = (double)(line[seek] - (size_t)'0');
 
             seek++;
             while (!eol() && line[seek] >= '0' && line[seek] <= '9')
             {
-                number = number * 10 + (line[seek] - '0');
+                number = number * 10 + (line[seek] - (size_t)'0');
 
                 seek++;
             }
@@ -618,17 +653,54 @@ private:
                 seek++;
             }
 
-            auto function = functions[line.substr(i, seek - i)];
+            string f = line.substr(i, seek - i);
 
-            eatBlank();
-
-            return  function(*this);
+            auto function = instructions.find(f);
+            if (function != instructions.end())
+            {
+                eatBlank();
+                return function->second(*this);
+            }
+            else
+            {
+                auto command = commands.find(f);
+                if (command != commands.end())
+                {
+                    eatBlank();
+                    return parseCommand(get<0>(command->second), get<1>(command->second), get<2>(command->second));
+                }
+             }
         }
 
         seek = i;
         return false;
     }
 
+    ParserResult parseFunction()
+    {
+        size_t i = seek;
+
+        if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
+        {
+            seek++;
+            while (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
+            {
+                seek++;
+            }
+
+            string f = line.substr(i, seek - i);
+
+            auto function = functions.find(f);
+            if (function != functions.end())
+            {
+                eatBlank();
+                return parseFunction(get<0>(function->second), get<1>(function->second), get<2>(function->second));
+            }
+        }
+
+        seek = i;
+        return false;
+    }
     ParserResult parsePrint()
     {
         if (ParserResult expression = parseExpression())
@@ -703,7 +775,7 @@ private:
     {
         if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
         {
-            size_t variable = (size_t)(line[seek] - 'A');
+            size_t variable = (size_t)line[seek] - (size_t)'A';
 
             seek++;
 
@@ -732,6 +804,11 @@ private:
         return true;
     }
 
+    ParserResult parseCall()
+    {
+        return parseFunction();
+    }
+
     ParserResult parseClear()
     {
         return instruction::clear;
@@ -750,6 +827,7 @@ private:
     {
         return instruction::end;
     }
+
 
     ParserResult parseExpression()
     {
@@ -925,7 +1003,7 @@ private:
     {
         if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
         {
-            size_t variable = (size_t)(line[seek] - 'A');
+            size_t variable = (size_t)line[seek] - (size_t)'A';
             seek++;
 
             eatBlank();
@@ -934,5 +1012,48 @@ private:
         }
 
         return false;
+    }
+
+    ParserResult parseCommand(size_t parameters, void(*f)(VirtualMachine&), bool parenthesis)
+    {
+        ParserResult set = ParserResult(instruction::call) + parameters + (size_t)f;
+
+        eatBlank();
+
+        if (!parenthesis || parse('('))
+        {
+            eatBlank();
+            if (parameters > 0)
+            {
+
+                if (ParserResult exp = parseExpression())
+                    set = set + exp;
+                else
+                    return false;
+
+                parameters--;
+
+                while (parameters > 0 && parse(','))
+                {
+                    eatBlank();
+
+                    if (ParserResult exp = parseExpression())
+                        set = set + exp;
+                    else
+                        return false;
+
+                    parameters--;
+                }
+            }
+
+            if (parenthesis && !parse(')'))
+                return false;
+        }
+        return set;
+    }
+
+    ParserResult parseFunction(size_t parameters, void(*f)(VirtualMachine&), bool parenthesis)
+    {
+        return ParserResult(instruction::push) + 0.0 + parseCommand(parameters, f, parenthesis);
     }
 };
