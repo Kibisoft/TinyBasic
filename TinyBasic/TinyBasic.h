@@ -36,6 +36,7 @@
 #include <sstream>
 #include <variant>
 #include <vector>
+#include <time.h>
 
 using namespace std;
 
@@ -68,10 +69,9 @@ enum class instruction : size_t
 
     print = 20,
     input = 21,
-    clear = 22,
 
-    call = 23,
-    call_proc = 24
+    call = 22,
+    call_proc = 23
 };
 
 template<class T> class stack : private vector<T>
@@ -117,11 +117,14 @@ public:
 
 class VirtualMachine
 {
+public:
+
+    double variables[26];
+
 private:
     map<size_t, InstructionSet> program;
 
     stack<double> stack;
-    double variables[26];
 
     size_t current_instruction;
     map<size_t, InstructionSet>::iterator current_line;
@@ -155,7 +158,6 @@ private:
 
         Instruction(&VirtualMachine::i_print),
         Instruction(&VirtualMachine::i_input),
-        Instruction(&VirtualMachine::i_clear),
 
         Instruction(&VirtualMachine::i_call),
         Instruction(&VirtualMachine::i_call_proc),
@@ -291,11 +293,6 @@ private:
     {
         cout << "? ";
         cin >> variables[current_line->second[current_instruction]];
-    }
-
-    void i_clear()
-    {
-        cout << "\x1B[2J\x1B[H";
     }
 
     void i_setvar()
@@ -519,7 +516,6 @@ private:
 
     map<string, function<ParserResult(TinyBasic&)>> instructions = {
         { "CALL", &TinyBasic::parseCall},
-        { "CLEAR", &TinyBasic::parseClear},
         { "END", &TinyBasic::parseEnd},
         { "GOSUB", &TinyBasic::parseGosub},
         { "GOTO", &TinyBasic::parseGoto},
@@ -561,9 +557,14 @@ public:
 
     int run()
     {
+        VirtualMachine vm;
+        return run(vm);
+    }
+
+    int run(VirtualMachine& vm)
+    {
         cout << "Tiny Basic v0.1 by Fred Morales" << endl;
 
-        VirtualMachine vm;
         vm.run(program);
 
         return true;
@@ -830,11 +831,6 @@ private:
         return parseFunction();
     }
 
-    ParserResult parseClear()
-    {
-        return instruction::clear;
-    }
-
     ParserResult parseRun()
     {
         VirtualMachine vm;
@@ -1095,5 +1091,33 @@ private:
     ParserResult parseFunction(size_t parameters, void(*f)(VirtualMachine&), bool parenthesis)
     {
         return parseCommand(parameters, f, parenthesis, instruction::call);
+    }
+};
+
+class ExtendedTinyBasic : public TinyBasic
+{
+public:
+    ExtendedTinyBasic()
+    {
+        srand((unsigned int)time(nullptr));
+
+        commands["CLEAR"] = { 0, [](VirtualMachine& vm) { for (auto& v : vm.variables) v = 0.0; } , false };
+
+        functions["ABS"] = { 1, [](VirtualMachine& vm) { vm[1] = abs(vm[0]); }, true };
+        functions["ACS"] = { 1, [](VirtualMachine& vm) { vm[1] = acos(vm[0]); }, true };
+        functions["ASN"] = { 1, [](VirtualMachine& vm) { vm[1] = asin(vm[0]); }, true };
+        functions["ASN"] = { 1, [](VirtualMachine& vm) { vm[1] = asin(vm[0]); }, true };
+        functions["ATN"] = { 1, [](VirtualMachine& vm) { vm[1] = atan(vm[0]); }, true };
+        functions["COS"] = { 1, [](VirtualMachine& vm) { vm[1] = cos(vm[0]); }, true };
+        functions["EXP"] = { 1, [](VirtualMachine& vm) { vm[1] = exp(vm[0]); }, true };
+        functions["INT"] = { 1, [](VirtualMachine& vm) { vm[1] = floor(vm[0]); }, true };
+        functions["LN"] = { 1, [](VirtualMachine& vm) { vm[1] = log(vm[0]); }, true };
+        functions["LOG"] = { 1, [](VirtualMachine& vm) { vm[1] = log10(vm[0]); }, true };
+        functions["PI"] = { 0, [](VirtualMachine& vm) { vm[0] = 3.14159265358979323846; }, false };
+        functions["RND"] = { 1, [](VirtualMachine& vm) { vm[1] = (double)rand() / RAND_MAX; }, true };
+        functions["SGN"] = { 1, [](VirtualMachine& vm) { vm[1] = (vm[0] == 0.0 ? 0.0 : (vm[0] < 0.0 ? -1.0 : 1.0)); } , true };
+        functions["SIN"] = { 1, [](VirtualMachine& vm) { vm[1] = sin(vm[0]); }, true };
+        functions["SQR"] = { 1, [](VirtualMachine& vm) { vm[1] = sqrt(vm[0]); }, true };
+        functions["TAN"] = { 1, [](VirtualMachine& vm) { vm[1] = tan(vm[0]); }, true };
     }
 };
