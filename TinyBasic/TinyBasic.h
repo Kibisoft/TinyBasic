@@ -38,6 +38,12 @@
 #include <vector>
 #include <time.h>
 
+#ifdef ORIGINAL
+typedef int number;
+#else
+typedef double number;
+#endif
+
 using namespace std;
 
 enum class instruction : size_t
@@ -77,7 +83,7 @@ enum class instruction : size_t
 template<class T> class stack : private vector<T>
 {
 public:
-    void push() { vector<T>::push_back(0.0); }
+    void push() { vector<T>::push_back((T)0); }
     void push(T t) { vector<T>::push_back(t); }
     void pop() { vector<T>::pop_back(); }
     const T& top() { return vector<T>::back(); }
@@ -92,7 +98,7 @@ public:
     size_t size() const { return vector<size_t>::size(); }
 
     void push(instruction instruction) { vector<size_t>::push_back((size_t)instruction); }
-    void push_value(double value) { vector<size_t>::push_back(*(size_t*)&value); }
+    void push_value(number value) { vector<size_t>::push_back(*(size_t*)&value); }
     void push_value(size_t value) { vector<size_t>::push_back(value); }
 
     void operator+=(const InstructionSet& set)
@@ -119,12 +125,12 @@ class VirtualMachine
 {
 public:
 
-    double variables[26];
+    number variables[26];
 
 private:
     map<size_t, InstructionSet> program;
 
-    stack<double> stack;
+    stack<number> stack;
 
     size_t current_instruction;
     map<size_t, InstructionSet>::iterator current_line;
@@ -167,7 +173,7 @@ private:
 
     void i_push()
     {
-        stack.push(*(double*)(&current_line->second[current_instruction])); // var name
+        stack.push(*(number*)(&current_line->second[current_instruction])); // var name
         current_instruction++;
     }
 
@@ -331,7 +337,7 @@ private:
 
         current_line++;
 
-        stack.push((double)current_line->first);
+        stack.push((number)current_line->first);
 
         current_line = program.find(line);
         current_line--;
@@ -410,10 +416,10 @@ private:
 
 public:
 
-    double operator[](size_t i) const { return stack[i]; }
-    double& operator[](size_t i) { return stack[i]; }
+    number operator[](size_t i) const { return stack[i]; }
+    number& operator[](size_t i) { return stack[i]; }
 
-    double top()
+    number top()
     {
         return stack.top();
     }
@@ -452,14 +458,14 @@ class ParserResult
 {
 private:
     bool valid;
-    variant<size_t, double, string, InstructionSet> value;
+    variant<size_t, number, string, InstructionSet> value;
 public:
 
     ParserResult(bool b) { valid = b; }
     operator bool() const { return valid; }
 
-    ParserResult(double d) { value = d; valid = true; }
-    operator double() const { return get<double>(value); }
+    ParserResult(number d) { value = d; valid = true; }
+    operator number() const { return get<number>(value); }
 
     ParserResult(size_t s) { value = s; valid = true; }
     operator size_t() const { return get<size_t>(value); }
@@ -485,7 +491,7 @@ public:
         return result;
     }
 
-    ParserResult operator+(double d)
+    ParserResult operator+(number d)
     {
         InstructionSet result = *this;
         result.push_value(d);
@@ -587,12 +593,12 @@ private:
     {
         seek = 0;
 
-        if (ParserResult number = parseNumber())
+        if (ParserResult num = parseNumber())
         {
             size_t s = seek;
             if (ParserResult set = parseStatement())
             {
-                double n = number;
+                number n = num;
                 program[(size_t)n] = set;
                 source[(size_t)n] = &line[s];
             }
@@ -635,19 +641,19 @@ private:
     {
         if (!eol() && line[seek] >= '0' && line[seek] <= '9')
         {
-            double number = (double)(line[seek] - (size_t)'0');
+            number num = (number)(line[seek] - (size_t)'0');
 
             seek++;
             while (!eol() && line[seek] >= '0' && line[seek] <= '9')
             {
-                number = number * 10 + (line[seek] - (size_t)'0');
+                num = num * 10 + (line[seek] - (size_t)'0');
 
                 seek++;
             }
 
             eatBlank();
 
-            return number;
+            return num;
         }
 
         return false;
@@ -736,7 +742,7 @@ private:
     {
         if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
         {
-            size_t variable = (size_t)(line[seek] - 'A');
+            size_t variable = (size_t)(line[seek] - (char)'A');
 
             seek++;
 
@@ -935,9 +941,9 @@ private:
 
     ParserResult parseFactor()
     {
-        if (ParserResult number = parseNumber())
+        if (ParserResult num = parseNumber())
         {
-            return ParserResult(instruction::push) + (double)number;
+            return ParserResult(instruction::push) + (number)num;
         }
         else if (ParserResult function = parseFunction())
         {
@@ -1094,6 +1100,8 @@ private:
     }
 };
 
+#ifndef ORIGINAL
+
 class ExtendedTinyBasic : public TinyBasic
 {
 public:
@@ -1101,7 +1109,7 @@ public:
     {
         srand((unsigned int)time(nullptr));
 
-        commands["CLEAR"] = { 0, [](VirtualMachine& vm) { for (auto& v : vm.variables) v = 0.0; } , false };
+        commands["CLEAR"] = { 0, [](VirtualMachine& vm) { for (auto& v : vm.variables) v = (number)0; } , false };
 
         functions["ABS"] = { 1, [](VirtualMachine& vm) { vm[1] = abs(vm[0]); }, true };
         functions["ACS"] = { 1, [](VirtualMachine& vm) { vm[1] = acos(vm[0]); }, true };
@@ -1121,3 +1129,5 @@ public:
         functions["TAN"] = { 1, [](VirtualMachine& vm) { vm[1] = tan(vm[0]); }, true };
     }
 };
+
+#endif
