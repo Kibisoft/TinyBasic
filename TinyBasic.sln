@@ -3,9 +3,12 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30517.126
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TinyBasic", "TinyBasic\TinyBasic.vcxproj", "{92392F1A-DEA3-4CD4-888E-F4EB52B54C1C}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTests", "UnitTests\UnitTests.vcxproj", "{F07C7356-3D00-4FF1-BB57-35634CE662FB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TinyBasic", "TinyBasic", "{3B03C8A9-9520-49E2-9661-AD4C7B03F186}"
+	ProjectSection(SolutionItems) = preProject
+		TinyBasic\TinyBasic.h = TinyBasic\TinyBasic.h
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,14 +18,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{92392F1A-DEA3-4CD4-888E-F4EB52B54C1C}.Debug|x64.ActiveCfg = Debug|x64
-		{92392F1A-DEA3-4CD4-888E-F4EB52B54C1C}.Debug|x64.Build.0 = Debug|x64
-		{92392F1A-DEA3-4CD4-888E-F4EB52B54C1C}.Debug|x86.ActiveCfg = Debug|Win32
-		{92392F1A-DEA3-4CD4-888E-F4EB52B54C1C}.Debug|x86.Build.0 = Debug|Win32
-		{92392F1A-DEA3-4CD4-888E-F4EB52B54C1C}.Release|x64.ActiveCfg = Release|x64
-		{92392F1A-DEA3-4CD4-888E-F4EB52B54C1C}.Release|x64.Build.0 = Release|x64
-		{92392F1A-DEA3-4CD4-888E-F4EB52B54C1C}.Release|x86.ActiveCfg = Release|Win32
-		{92392F1A-DEA3-4CD4-888E-F4EB52B54C1C}.Release|x86.Build.0 = Release|Win32
 		{F07C7356-3D00-4FF1-BB57-35634CE662FB}.Debug|x64.ActiveCfg = Debug|x64
 		{F07C7356-3D00-4FF1-BB57-35634CE662FB}.Debug|x64.Build.0 = Debug|x64
 		{F07C7356-3D00-4FF1-BB57-35634CE662FB}.Debug|x86.ActiveCfg = Debug|Win32
