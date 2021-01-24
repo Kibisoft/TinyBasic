@@ -77,7 +77,7 @@ namespace BasicTests
 		{
 			ExtendedTinyBasic basic;
 
-			basic.parseLine("10 LET A=SGN(1-20)");
+			basic.parseLine("10 LET AZERTY=SGN(1-20)");
 
 			VirtualMachine vm;
 			basic.run(vm);

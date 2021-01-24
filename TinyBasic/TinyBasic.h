@@ -125,7 +125,11 @@ class VirtualMachine
 {
 public:
 
+#ifdef ORIGINAL
     number variables[26];
+#else
+    number variables[256];
+#endif
 
 private:
     map<size_t, InstructionSet> program;
@@ -516,6 +520,11 @@ private:
     map<size_t, InstructionSet> program;
     map<size_t, string> source;
 
+#ifndef ORIGINAL
+    size_t nextvariable = -1;
+    map<string, size_t> variables;
+#endif
+
     string empty;
     string& line = empty;
     size_t seek = 0;
@@ -799,6 +808,7 @@ private:
         return instruction::ret;
     }
 
+#ifdef ORIGINAL
     ParserResult parseLet()
     {
         if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
@@ -822,6 +832,51 @@ private:
 
         return false;
     }
+#else
+    ParserResult parseLet()
+    {
+        size_t i = seek;
+
+        if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
+        {
+            seek++;
+            while (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
+            {
+                seek++;
+            }
+
+            string v = line.substr(i, seek - i);
+
+            eatBlank();
+
+            size_t variable = (size_t)-1;
+
+            auto i = variables.find(v);
+            if (i != variables.end())
+                variable = i->second;
+            else
+            {
+                nextvariable++;
+                variables[v] = nextvariable;
+                variable = nextvariable;
+            }
+
+            eatBlank();
+            if (!eol() && line[seek] == '=')
+            {
+                seek++;
+                eatBlank();
+
+                if (ParserResult expression = parseExpression())
+                {
+                    return ParserResult(instruction::setvar) + variable + expression;
+                }
+            }
+        }
+
+        return false;
+    }
+#endif
 
     ParserResult parseList()
     {
@@ -1027,6 +1082,7 @@ private:
         return false;
     }
 
+#ifdef ORIGINAL
     ParserResult parseVariable()
     {
         if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
@@ -1041,6 +1097,37 @@ private:
 
         return false;
     }
+#else
+    ParserResult parseVariable()
+    {
+        size_t i = seek;
+
+        if (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
+        {
+            seek++;
+            while (!eol() && line[seek] >= 'A' && line[seek] <= 'Z')
+            {
+                seek++;
+            }
+
+            string v = line.substr(i, seek - i);
+
+            eatBlank();
+
+            auto i = variables.find(v);
+            if (i != variables.end())
+                return i->second;
+            else
+            {
+                nextvariable++;
+                variables[v] = nextvariable;
+                return nextvariable;
+            }            
+        }
+
+        return false;
+    }
+#endif
 
     ParserResult parseCommand(size_t parameters, void(*f)(VirtualMachine&), bool parenthesis, instruction inst)
     {
