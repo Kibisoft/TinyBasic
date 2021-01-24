@@ -5,9 +5,9 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace UnitTests
+namespace TinyBasicTests
 {
-	TEST_CLASS(UnitTests)
+	TEST_CLASS(TinyBasicTests)
 	{
 	public:
 		
@@ -46,43 +46,6 @@ namespace UnitTests
 			basic.parseLine("70 CLEAR");
 
 			basic.run();
-		}
-
-		TEST_METHOD(TestMethod4)
-		{
-			ExtendedTinyBasic basic;
-
-			basic.parseLine("10 LET A=10");
-			basic.parseLine("20 CLEAR");
-
-			VirtualMachine vm;
-			basic.run(vm);
-
-			Assert::AreEqual(vm.variables[0], 0.0);
-		}
-
-		TEST_METHOD(TestMethod5)
-		{
-			ExtendedTinyBasic basic;
-
-			basic.parseLine("10 LET A=PI");
-
-			VirtualMachine vm;
-			basic.run(vm);
-
-			Assert::AreEqual(vm.variables[0], 3.14159265358979323846);
-		}
-
-		TEST_METHOD(TestMethod6)
-		{
-			ExtendedTinyBasic basic;
-
-			basic.parseLine("10 LET A=SGN(1-20)");
-
-			VirtualMachine vm;
-			basic.run(vm);
-
-			Assert::AreEqual(vm.variables[0], -1.0);
 		}
 	};
 }
